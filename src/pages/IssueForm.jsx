@@ -1,3 +1,4 @@
+// src/pages/IssueForm.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -81,27 +82,24 @@ const IssueForm = () => {
     if (file) formData.append('attachment', file);
 
     try {
-      const response = await axios.post(
+      await axios.post(
         config.ISSUES_ROUTE,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
-
-      // Check for successful response (e.g., status 200)
-      if (response.status === 200) {
-        // Show success animation
-        setShowAnimation(true);
-        setTimeout(() => {
-          setShowAnimation(false);
-          setShowSuccess(true);
-        }, 2000);
-      }
+      
+      // Show success animation
+      setShowAnimation(true);
+      setTimeout(() => {
+        setShowAnimation(false);
+        setShowSuccess(true);
+      }, 2000);
     } catch (err) {
-      const msg = 
+      const msg =
         err.response?.data?.detail ||
         err.response?.data?.message ||
         err.message;
-      setError(msg || 'An error occurred while submitting the issue.');
+      setError(msg);
       setIsSubmitting(false);
     }
   };
