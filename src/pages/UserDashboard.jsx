@@ -1,4 +1,3 @@
-// src/pages/UserDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -15,7 +14,7 @@ import {
 } from 'react-icons/fa';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import { CSSTransition, TransitionGroup } from 'react-transition-group';
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function UserDashboard() {
@@ -59,6 +58,9 @@ export default function UserDashboard() {
   
   // — Toast notifications state —
   const [toasts, setToasts] = useState([]);
+  
+  // — Animation state —
+  const [modalAnimation, setModalAnimation] = useState(false);
   
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
@@ -138,6 +140,18 @@ export default function UserDashboard() {
     
     setStatusCounts(counts);
   }, [allIssues]);
+  
+  // Handle modal animation
+  useEffect(() => {
+    if (showRemarksModal) {
+      setModalAnimation(true);
+    } else {
+      const timer = setTimeout(() => {
+        setModalAnimation(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showRemarksModal]);
   
   async function fetchMyIssues() {
     try {
@@ -377,10 +391,13 @@ export default function UserDashboard() {
                       <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {editingIssueId === issue.id ? (
                           <Form.Control
+                            as="textarea"
+                            rows={3}
                             value={editDescription}
                             onChange={e => setEditDescription(e.target.value)}
                             size="sm"
                             className="modern-input"
+                            style={{ resize: 'none', width: '100%' }}
                           />
                         ) : (
                           issue.description
@@ -552,6 +569,36 @@ export default function UserDashboard() {
       </Container>
     );
   }
+  
+  // Modal styles for the conversation modal
+  const overlayStyle = {
+    position: 'fixed', top: 0, left: 0,
+    width: '100vw', height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 1000
+  };
+  
+  const modalStyle = {
+    backgroundColor: '#fff',
+    padding: '20px',
+    borderRadius: '8px',
+    maxWidth: '90%',
+    maxHeight: '90%',
+    position: 'relative',
+    overflowY: 'auto'
+  };
+  
+  const closeBtnStyle = {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
+    border: 'none',
+    background: 'transparent',
+    fontSize: '1.2rem',
+    cursor: 'pointer',
+    color: '#000'
+  };
   
   return (
     <div className="d-flex modern-dashboard" style={{ minHeight: '100vh' }}>
@@ -1035,15 +1082,10 @@ export default function UserDashboard() {
         </Modal.Body>
       </Modal>
       
-      {/* Conversation Modal with Stunning Animation */}
-      <CSSTransition
-        in={showRemarksModal}
-        timeout={300}
-        classNames="conversation-modal"
-        unmountOnExit
-      >
+      {/* Conversation Modal with Simple Animation */}
+      {(showRemarksModal || modalAnimation) && (
         <Modal 
-          show={showRemarksModal} 
+          show={showRemarksModal || modalAnimation} 
           onHide={closeRemarks} 
           size="lg" 
           className="modern-modal conversation-modal-wrapper"
@@ -1058,40 +1100,32 @@ export default function UserDashboard() {
           <Modal.Body className="conversation-modal-body">
             <div className="conversation-container">
               {remarks.length > 0 ? (
-                <TransitionGroup>
-                  {remarks.map(msg => (
-                    <CSSTransition
-                      key={msg.id}
-                      timeout={500}
-                      classNames="conversation-message"
-                    >
-                      <div className="conversation-message">
-                        <div className="message-header">
-                          <div className="message-sender">
-                            <strong>{msg.sender_name}</strong>
-                          </div>
-                          <div className="message-time">
-                            {new Date(msg.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="message-content">
-                          <p>{msg.message_text}</p>
-                          {msg.attachment_url && (
-                            <div className="message-attachment">
-                              <Image
-                                src={msg.attachment_url}
-                                alt="Screenshot"
-                                onClick={() => openImageModal(msg.attachment_url)}
-                                thumbnail
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                              />
-                            </div>
-                          )}
-                        </div>
+                remarks.map(msg => (
+                  <div key={msg.id} className="conversation-message">
+                    <div className="message-header">
+                      <div className="message-sender">
+                        <strong>{msg.sender_name}</strong>
                       </div>
-                    </CSSTransition>
-                  ))}
-                </TransitionGroup>
+                      <div className="message-time">
+                        {new Date(msg.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="message-content">
+                      <p>{msg.message_text}</p>
+                      {msg.attachment_url && (
+                        <div className="message-attachment">
+                          <Image
+                            src={msg.attachment_url}
+                            alt="Screenshot"
+                            onClick={() => openImageModal(msg.attachment_url)}
+                            thumbnail
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
               ) : (
                 <div className="empty-conversation">
                   <FaComment size={48} className="text-muted mb-3" />
@@ -1165,7 +1199,89 @@ export default function UserDashboard() {
             </div>
           </Modal.Body>
         </Modal>
-      </CSSTransition>
+      )}
+      
+      {/* Simple Conversation Modal */}
+      {showRemarksModal && currentRemarksIssue && (
+        <div style={overlayStyle} onClick={closeRemarks}>
+          <div style={modalStyle} onClick={e => e.stopPropagation()}>
+            <button style={closeBtnStyle} onClick={closeRemarks}>×</button>
+            <h3>💬 Conversation for Issue #{currentRemarksIssue}</h3>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', marginBottom: 10 }}>
+              {remarks.length
+                ? remarks.map(msg => (
+                    <div key={msg.id} style={{ marginBottom: 12 }}>
+                      <strong>{msg.sender_name}:</strong> {msg.message_text}
+                      {msg.attachment_url && (
+                        <div style={{ marginTop: 6 }}>
+                          <img
+                            src={msg.attachment_url}
+                            alt="Screenshot"
+                            style={{ maxWidth: '200px', cursor: 'pointer', display: 'block' }}
+                            onClick={() => openImageModal(msg.attachment_url)}
+                          />
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.8em', color: '#666' }}>
+                        {new Date(msg.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  ))
+                : <p>No messages yet.</p>
+              }
+            </div>
+            <textarea
+              rows={3}
+              value={newRemarkText}
+              onChange={e => setNewRemarkText(e.target.value)}
+              placeholder="Type your remark…"
+              style={{ width: '100%', marginBottom: 10 }}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => setScreenshotFile(e.target.files[0])}
+              style={{ marginBottom: 10 }}
+            />
+            {screenshotFile && (
+              <div style={{ marginBottom: 10 }}>
+                <strong>Preview:</strong><br/>
+                <img src={URL.createObjectURL(screenshotFile)} alt="Preview" style={{ maxWidth: '100%' }}/>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                style={{ 
+                  padding: '5px 10px', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer',
+                  backgroundColor: '#28a745',
+                  color: '#fff',
+                  marginRight: 5
+                }}
+                onClick={() => sendRemark(currentRemarksIssue, newRemarkText)}
+                disabled={!newRemarkText.trim() && !screenshotFile}
+              >
+                Send
+              </button>
+              <button 
+                style={{ 
+                  padding: '5px 10px', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer',
+                  backgroundColor: 'gray',
+                  color: '#fff'
+                }}
+                onClick={closeRemarks}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Status Details Modal */}
       <Modal show={showStatusModal} onHide={closeStatusModal} size="lg" className="modern-modal">
@@ -1574,17 +1690,12 @@ export default function UserDashboard() {
           background-color: white;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           border-left: 4px solid #f39c12;
+          animation: messageSlideIn 0.5s ease-in-out;
         }
         
-        .conversation-message-enter {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        
-        .conversation-message-enter-active {
-          opacity: 1;
-          transform: translateY(0);
-          transition: opacity 500ms, transform 500ms;
+        @keyframes messageSlideIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         
         .message-header {
