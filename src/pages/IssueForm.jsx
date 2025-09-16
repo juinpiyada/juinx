@@ -2,21 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Form, 
-  Button, 
-  Alert, 
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Button,
+  Alert,
   Modal,
   Spinner,
   Fade
 } from 'react-bootstrap';
-import { 
-  FaExclamationTriangle, 
-  FaCheckCircle, 
-  FaPaperclip,
+import {
+  FaExclamationTriangle,
+  FaCheckCircle,
   FaLaptopCode,
   FaUserGraduate,
   FaBuilding
@@ -31,7 +30,6 @@ const IssueForm = () => {
     description: '',
     status: 'open',
   });
-  const [file, setFile] = useState(null);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,12 +52,6 @@ const IssueForm = () => {
     setData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Handle file changes
-  const handleFileChange = e => {
-    setError('');
-    setFile(e.target.files[0] || null);
-  };
-
   // Handle form submission
   const handleSubmit = async e => {
     e.preventDefault();
@@ -79,7 +71,6 @@ const IssueForm = () => {
     formData.append('title', title);
     formData.append('description', description);
     formData.append('status', status);
-    if (file) formData.append('attachment', file);
 
     try {
       await axios.post(
@@ -87,7 +78,7 @@ const IssueForm = () => {
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
-      
+
       // Show success animation
       setShowAnimation(true);
       setTimeout(() => {
@@ -108,7 +99,6 @@ const IssueForm = () => {
   const closePopup = () => {
     const { user_id } = data;
     setData({ user_id, issue_type: 'it', title: '', description: '', status: 'open' });
-    setFile(null);
     setShowSuccess(false);
     setIsSubmitting(false);
     navigate('/dashboard');
@@ -163,7 +153,7 @@ const IssueForm = () => {
                   >
                     {issueTypeOptions.map(option => (
                       <option key={option.value} value={option.value}>
-                        {option.icon}{option.label}
+                        {option.label}
                       </option>
                     ))}
                   </Form.Select>
@@ -213,25 +203,6 @@ const IssueForm = () => {
                   </Form.Select>
                 </Form.Group>
 
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold">
-                    <FaPaperclip className="me-2" />
-                    Attachment (Optional)
-                  </Form.Label>
-                  <Form.Control
-                    type="file"
-                    name="attachment"
-                    onChange={handleFileChange}
-                    className="py-2"
-                  />
-                  {file && (
-                    <div className="mt-2 text-muted small">
-                      <FaPaperclip className="me-1" />
-                      {file.name}
-                    </div>
-                  )}
-                </Form.Group>
-
                 <Button
                   type="submit"
                   variant="primary"
@@ -263,8 +234,10 @@ const IssueForm = () => {
 
       {/* Success Animation */}
       {showAnimation && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-90"
-             style={{ zIndex: 9999 }}>
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-90"
+          style={{ zIndex: 9999 }}
+        >
           <div className="text-center">
             <div className="success-animation">
               <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
@@ -303,7 +276,7 @@ const IssueForm = () => {
           height: 100px;
           margin: 0 auto;
         }
-        
+
         .checkmark {
           width: 100px;
           height: 100px;
@@ -315,7 +288,7 @@ const IssueForm = () => {
           box-shadow: inset 0px 0px 0px #4caf50;
           animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
         }
-        
+
         .checkmark__circle {
           stroke-dasharray: 166;
           stroke-dashoffset: 166;
@@ -325,20 +298,20 @@ const IssueForm = () => {
           fill: #fff;
           animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
         }
-        
+
         .checkmark__check {
           transform-origin: 50% 50%;
           stroke-dasharray: 48;
           stroke-dashoffset: 48;
           animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
         }
-        
+
         @keyframes stroke {
           100% {
             stroke-dashoffset: 0;
           }
         }
-        
+
         @keyframes scale {
           0%, 100% {
             transform: none;
@@ -347,7 +320,7 @@ const IssueForm = () => {
             transform: scale3d(1.1, 1.1, 1);
           }
         }
-        
+
         @keyframes fill {
           100% {
             box-shadow: inset 0px 0px 0px 30px #4caf50;
