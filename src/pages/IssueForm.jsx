@@ -4,14 +4,14 @@ import axios from "axios";
 
 const API = "https://juinbackend.vercel.app";
 
-/* ---------- Try to hydrate current user from storage (no backend changes) ---------- */
+/* ---- Try to hydrate the logged-in user from storage (no backend change) ---- */
 function getStoredUser() {
-  const tryParse = (v) => {
+  const tryJSON = (v) => {
     try { return JSON.parse(v); } catch { return null; }
   };
 
-  // Look through a few common keys you’ve used across modules
-  const sources = [
+  // look through a few common keys you've used elsewhere
+  const rawCandidates = [
     localStorage.getItem("sessionUser"),
     localStorage.getItem("auth"),
     localStorage.getItem("user"),
@@ -20,24 +20,18 @@ function getStoredUser() {
     sessionStorage.getItem("user"),
   ].filter(Boolean);
 
-  let found = null;
-  for (const raw of sources) {
-    const obj = tryParse(raw) || raw; // sometimes stored as plain string
-    if (obj && typeof obj === "object") { found = obj; break; }
+  let obj = null;
+  for (const raw of rawCandidates) {
+    const parsed = tryJSON(raw);
+    if (parsed && typeof parsed === "object") { obj = parsed; break; }
   }
+  if (!obj) return { userId: "", userName: "" };
 
-  if (!found) return { userId: "", userName: "" };
-
-  // Try several shapes you commonly use
+  // support multiple shapes
   const userId =
-    found.userid || found.userId || found.user_id || found.id || found.stuid || "";
+    obj.userid || obj.userId || obj.user_id || obj.id || obj.stuid || "";
   const userName =
-    found.name ||
-    found.fullname ||
-    found.fullName ||
-    found.username ||
-    found.stuname ||
-    "";
+    obj.name || obj.fullname || obj.fullName || obj.username || obj.stuname || "";
 
   return { userId: String(userId || ""), userName: String(userName || "") };
 }
@@ -56,6 +50,7 @@ export default function IssuesManager() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
+  // Fetch all issues
   const fetchIssues = async () => {
     try {
       const res = await axios.get(`${API}/issues`);
@@ -66,8 +61,8 @@ export default function IssuesManager() {
     }
   };
 
-  // On mount: hydrate current user (if present) and fetch issues
   useEffect(() => {
+    // hydrate user from storage (if present)
     const { userId, userName } = getStoredUser();
     if (userId) {
       setForm((f) => ({ ...f, user_id: userId }));
@@ -76,14 +71,17 @@ export default function IssuesManager() {
     fetchIssues();
   }, []);
 
+  // Handle form input
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Handle file
   const handleFile = (e) => {
     setFile(e.target.files?.[0] || null);
   };
 
+  // Submit new issue
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -99,13 +97,13 @@ export default function IssuesManager() {
       });
 
       setMsg("✅ Issue created successfully");
-      setForm({
-        user_id: form.user_id, // keep the same user id
+      setForm((f) => ({
+        user_id: f.user_id, // keep same user
         title: "",
         description: "",
         issue_type: "it",
         status: "open",
-      });
+      }));
       setFile(null);
       fetchIssues();
     } catch (err) {
@@ -116,6 +114,7 @@ export default function IssuesManager() {
     }
   };
 
+  // Close issue
   const closeIssue = async (id) => {
     try {
       await axios.put(`${API}/issues/${id}/close`);
@@ -131,11 +130,17 @@ export default function IssuesManager() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
-        <h2 className="text-center text-2xl md:text-3xl font-semibold text-gray-800">
-          📋 Issue Manager
-        </h2>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl md:text-3xl font-semibold text-gray-800">📋 Issue Manager</h2>
+          {userName ? (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium text-gray-800">Signed in:</span> {userName}
+            </div>
+          ) : null}
+        </div>
 
-        {/* Create Issue */}
+        {/* Create Issue Form */}
         <form
           onSubmit={handleSubmit}
           className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 md:p-6 shadow-sm"
@@ -143,7 +148,7 @@ export default function IssuesManager() {
           <h3 className="text-lg font-semibold text-gray-800">Create New Issue</h3>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* User ID (read-only if auto-fetched) */}
+            {/* User ID */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 User ID <span className="text-rose-600">*</span>
@@ -161,13 +166,11 @@ export default function IssuesManager() {
                 readOnly={hasAutoUser}
               />
               {hasAutoUser && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-filled from session. (Field locked)
-                </p>
+                <p className="mt-1 text-xs text-gray-500">Auto-filled from session (locked)</p>
               )}
             </div>
 
-            {/* User Name (read-only, informational) */}
+            {/* User Name (read-only info) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
               <input
@@ -179,6 +182,7 @@ export default function IssuesManager() {
               />
             </div>
 
+            {/* Title */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Title <span className="text-rose-600">*</span>
@@ -194,13 +198,14 @@ export default function IssuesManager() {
               />
             </div>
 
+            {/* Description */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description <span className="text-rose-600">*</span>
               </label>
               <textarea
                 name="description"
-                placeholder="Describe the issue with steps, screenshots, etc."
+                placeholder="Describe the issue with steps, expected vs actual, etc."
                 value={form.description}
                 onChange={handleChange}
                 className="h-28 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -208,6 +213,7 @@ export default function IssuesManager() {
               />
             </div>
 
+            {/* Issue Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Issue Type</label>
               <select
@@ -222,6 +228,7 @@ export default function IssuesManager() {
               </select>
             </div>
 
+            {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
@@ -238,6 +245,7 @@ export default function IssuesManager() {
               </select>
             </div>
 
+            {/* Attachment */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Attachment</label>
               <input
@@ -248,6 +256,7 @@ export default function IssuesManager() {
             </div>
           </div>
 
+          {/* Submit */}
           <div className="mt-4">
             <button
               type="submit"
@@ -258,6 +267,7 @@ export default function IssuesManager() {
             </button>
           </div>
 
+          {/* Message */}
           {msg && (
             <div className="mt-3 text-sm">
               <span
@@ -282,22 +292,21 @@ export default function IssuesManager() {
           {issues.length === 0 ? (
             <p className="mt-2 text-sm text-gray-600">No issues found</p>
           ) : (
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 grid grid-cols-1 gap-3">
               {issues.map((issue) => (
                 <div
                   key={issue.id}
                   className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
                       <h4 className="text-base font-semibold text-gray-900">{issue.title}</h4>
                       <p className="mt-1 text-sm text-gray-600">
-                        <b className="text-gray-800">ID:</b> {issue.id}{" "}
+                        <b className="text-gray-800">ID:</b> {issue.id}
                         <span className="mx-2">&middot;</span>
                         <b className="text-gray-800">User:</b> {issue.user_id}
                         {issue.user_name ? (
                           <>
-                            {" "}
                             <span className="mx-2">&middot;</span>
                             <b className="text-gray-800">Name:</b> {issue.user_name}
                           </>
@@ -307,7 +316,7 @@ export default function IssuesManager() {
                         <b className="text-gray-800">Description:</b> {issue.description}
                       </p>
                       <p className="mt-1 text-sm text-gray-700">
-                        <b className="text-gray-800">Type:</b> {issue.issue_type}{" "}
+                        <b className="text-gray-800">Type:</b> {issue.issue_type}
                         <span className="mx-2">&middot;</span>
                         <b className="text-gray-800">Status:</b>{" "}
                         <span
@@ -333,6 +342,7 @@ export default function IssuesManager() {
                       )}
                     </div>
 
+                    {/* Actions */}
                     <div className="shrink-0">
                       {issue.status !== "closed" && (
                         <button
